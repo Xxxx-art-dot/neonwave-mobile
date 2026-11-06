@@ -5,17 +5,46 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Extract Project ZIP
         run: |
           unzip -o neonwave_flutter_android.zip
           if [ -d "neonwave-android" ]; then cp -r neonwave-android/* .; fi
+
+      - name: Patch Audio Handler For Background & Notifications
+        run: |
+          python3 -c "
+          path = 'lib/services/audio_handler.dart'
+          with open(path, 'r') as f:
+              code = f.read()
+
+          # 1. منع إيقاف الخدمة في الخلفية وتفعيل شارات الإشعار
+          code = code.replace(
+              'androidStopForegroundOnPause: true,',
+              'androidStopForegroundOnPause: false,\n      androidShowNotificationBadge: true,\n      androidNotificationClickStartsActivity: true,'
+          )
+
+          # 2. ربط تحديثات التشغيل بلحظة الضغط على Play/Pause حتى يظهر الإشعار فوراً
+          old_pipe = '_player.playbackEventStream.map(_transformEvent).pipe(playbackState);'
+          new_pipe = '''_player.playbackEventStream.listen((e) => playbackState.add(_transformEvent(e)));
+              _player.playerStateStream.listen((_) => playbackState.add(_transformEvent(_player.playbackEvent)));
+              _player.sequenceStateStream.listen((_) => playbackState.add(_transformEvent(_player.playbackEvent)));'''
+          code = code.replace(old_pipe, new_pipe)
+
+          with open(path, 'w') as f:
+              f.write(code)
+          print('Successfully patched audio_handler.dart')
+          "
+
       - uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
+
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+
       - name: Generate Android Wrapper & Build APK
         run: |
           cp android/app/src/main/AndroidManifest.xml /tmp/Man.xml || true
@@ -23,8 +52,8 @@ jobs:
           cp /tmp/Man.xml android/app/src/main/AndroidManifest.xml || true
           flutter pub get
           flutter build apk --release --no-tree-shake-icons
+
       - uses: actions/upload-artifact@v4
         with:
           name: NEONWAVE-Release-APK
           path: build/app/outputs/flutter-apk/app-release.apk
-
