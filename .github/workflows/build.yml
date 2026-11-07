@@ -23,8 +23,12 @@ jobs:
       - name: Generate Android Wrapper & Build APK
         run: |
           cp android/app/src/main/AndroidManifest.xml /tmp/Man.xml || true
+          mkdir -p /tmp/drawable
+          cp -r android/app/src/main/res/drawable* /tmp/drawable/ || true
           flutter create --platforms=android .
           cp /tmp/Man.xml android/app/src/main/AndroidManifest.xml || true
+          mkdir -p android/app/src/main/res/drawable
+          cp -r /tmp/drawable/* android/app/src/main/res/drawable/ || true
           flutter pub get
           flutter build apk --release --no-tree-shake-icons
 
