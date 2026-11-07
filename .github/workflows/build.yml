@@ -18,13 +18,17 @@ jobs:
           with open(path, 'r') as f:
               code = f.read()
 
-          # 1. منع إيقاف الخدمة في الخلفية وتفعيل شارات الإشعار
+          # 1. حل تعارض الشرط (Assertion) وضمان عمل خدمة الخلفية
+          code = code.replace(
+              'androidNotificationOngoing: true,',
+              'androidNotificationOngoing: false,'
+          )
           code = code.replace(
               'androidStopForegroundOnPause: true,',
               'androidStopForegroundOnPause: false,\n      androidShowNotificationBadge: true,\n      androidNotificationClickStartsActivity: true,'
           )
 
-          # 2. ربط تحديثات التشغيل بلحظة الضغط على Play/Pause حتى يظهر الإشعار فوراً
+          # 2. ربط تحديثات التشغيل لتوليد الإشعار فور الضغط على Play
           old_pipe = '_player.playbackEventStream.map(_transformEvent).pipe(playbackState);'
           new_pipe = '''_player.playbackEventStream.listen((e) => playbackState.add(_transformEvent(e)));
               _player.playerStateStream.listen((_) => playbackState.add(_transformEvent(_player.playbackEvent)));
