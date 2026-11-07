@@ -1,4 +1,4 @@
-name: Build APK From ZIP
+name: Build NEONWAVE v4 APK
 on: [push, workflow_dispatch]
 jobs:
   build:
@@ -10,35 +10,6 @@ jobs:
         run: |
           unzip -o neonwave_flutter_android.zip
           if [ -d "neonwave-android" ]; then cp -r neonwave-android/* .; fi
-
-      - name: Patch Audio Handler For Background & Notifications
-        run: |
-          python3 -c "
-          path = 'lib/services/audio_handler.dart'
-          with open(path, 'r') as f:
-              code = f.read()
-
-          # 1. حل تعارض الشرط (Assertion) وضمان عمل خدمة الخلفية
-          code = code.replace(
-              'androidNotificationOngoing: true,',
-              'androidNotificationOngoing: false,'
-          )
-          code = code.replace(
-              'androidStopForegroundOnPause: true,',
-              'androidStopForegroundOnPause: false,\n      androidShowNotificationBadge: true,\n      androidNotificationClickStartsActivity: true,'
-          )
-
-          # 2. ربط تحديثات التشغيل لتوليد الإشعار فور الضغط على Play
-          old_pipe = '_player.playbackEventStream.map(_transformEvent).pipe(playbackState);'
-          new_pipe = '''_player.playbackEventStream.listen((e) => playbackState.add(_transformEvent(e)));
-              _player.playerStateStream.listen((_) => playbackState.add(_transformEvent(_player.playbackEvent)));
-              _player.sequenceStateStream.listen((_) => playbackState.add(_transformEvent(_player.playbackEvent)));'''
-          code = code.replace(old_pipe, new_pipe)
-
-          with open(path, 'w') as f:
-              f.write(code)
-          print('Successfully patched audio_handler.dart')
-          "
 
       - uses: actions/setup-java@v4
         with:
@@ -59,5 +30,5 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: NEONWAVE-Release-APK
+          name: NEONWAVE-v4-Release-APK
           path: build/app/outputs/flutter-apk/app-release.apk
